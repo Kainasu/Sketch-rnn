@@ -15,6 +15,9 @@ from keras import backend as K
 import sketch_rnn_model
 import utils
 
+from tensorflow.python.framework.ops import disable_eager_execution
+disable_eager_execution()
+
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
