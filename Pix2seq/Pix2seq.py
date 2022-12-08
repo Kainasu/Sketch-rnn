@@ -93,10 +93,10 @@ class EncoderCNN(nn.Module):
 
     def __init__(self, d_z: int):
         super().__init__()
-
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.filter_hp = torch.tensor([[[[-1, -1, -1],
                                              [-1, 8, -1],
-                                             [-1, -1, -1]]]]).float().to('cuda')
+                                             [-1, -1, -1]]]]).float().to(self.device)
 
         self.conv1 = nn.Conv2d(in_channels = 1, out_channels= 4, kernel_size = 2, stride =2)
         self.conv2 = nn.Conv2d(in_channels = 4, out_channels= 4, kernel_size = 2, stride =1)
@@ -270,18 +270,19 @@ class Sampler:
     def __init__(self, encoder: EncoderCNN, decoder: DecoderRNN):
         self.decoder = decoder
         self.encoder = encoder
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def sample(self, data: torch.Tensor, temperature: float, filename: Optional[str] = None):
         # $N_{max}$
         longest_seq_len = len(data[0])
         
         # Get $z$ from the encoder
-        img = torch.tensor(data[2]).unsqueeze(0).unsqueeze(0).float().to('cuda')        
+        img = torch.tensor(data[2]).unsqueeze(0).unsqueeze(0).float().to(self.device)        
         data = data[0]
         z, _, _ = self.encoder(img)
 
         # Start-of-sequence stroke is $(0, 0, 1, 0, 0)$
-        s = data.new_tensor([0, 0, 1, 0, 0]).to('cuda')
+        s = data.new_tensor([0, 0, 1, 0, 0]).to(self.device)
         seq = [s]
         # Initial decoder is `None`.
         # The decoder will initialize it to $[h_0; c_0] = \tanh(W_{z}z + b_z)$
@@ -429,7 +430,7 @@ class Configs():
         data_sets = [f'{c}.npz' for c in classes]
         percentage = 0.1
         datasets, png_paths, _ = load_dataset('./', data_sets, percentage)
-        if not os.path.exists(png_paths['train'][-1]): #TODO change condition
+        if not os.path.exists(png_paths['test'][-1]): 
             render_svg2bitmap('./', data_sets, percentage)
 
         # Create training dataset
