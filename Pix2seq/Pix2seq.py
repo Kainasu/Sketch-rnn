@@ -359,8 +359,6 @@ class Sampler:
             plt.savefig(filename)
         else:
             plt.show()
-        plt.close()
-
 
 class Configs():
     """
@@ -387,7 +385,7 @@ class Configs():
     dec_hidden_size = 512
 
     # Batch size
-    batch_size = 100
+    batch_size = 1000
 
     # Number of features in $z$
     d_z = 128
@@ -428,7 +426,7 @@ class Configs():
         # `npz` file path is `data/sketch/[DATASET NAME].npz`
         #data_sets = ['cat.npz', 'duck.npz', 'owl.npz', 'giraffe.npz']
         data_sets = [f'{c}.npz' for c in classes]
-        percentage = 0.1
+        percentage = 1
         datasets, png_paths, _ = load_dataset('./', data_sets, percentage)
         if not os.path.exists(png_paths['test'][-1]): 
             render_svg2bitmap('./', data_sets, percentage)
@@ -445,7 +443,16 @@ class Configs():
 
         self.state_modules = []
 
-    def save(self, n_images=3):
+        self.sampling_images_indices = None
+        self.train_images_indices = None
+
+    def save(self, n_images=12):
+        
+        # Init at first time
+        if not self.sampling_images_indices:
+            self.sampling_images_indices = [np.random.choice(len(self.valid_dataset)) for i in range(n_images)]
+        if not self.train_images_indices:
+            self.train_images_indices = [np.random.choice(len(self.train_dataset)) for i in range(n_images)]
 
         dirname = 'checkpoints'
         if not os.path.exists(dirname):
@@ -458,9 +465,41 @@ class Configs():
             'decoder': self.decoder.state_dict()
         }, os.path.join(dirname, f'model-{now}.dict'))
 
-        for i in range(n_images):
-            self.sample(os.path.join(dirname, f'model-{now}-{i}.png'))
+        plt.close()
+        plt.figure(figsize=(28,20))
+        plt.tight_layout()
 
+        plt.subplot(n_images, 6, 1)
+        filename = os.path.join(dirname, f'model-{now}-train.png')
+        for i, index in enumerate(self.sampling_images_indices):
+            plt.subplot(n_images, 6, i*6+1)
+            plt.title(f'Train dataset image {index}')
+            data_ = self.train_dataset[index]
+            Sampler.plot(data_[0].clone(), filename)
+            #data_ = data.unsqueeze(1).to(self.device)
+            for j, temperature in enumerate(np.linspace(0.01, 0.99, 5)):
+                plt.subplot(n_images, 6, i*6+2+j)
+                plt.title(f'temperature={temperature}')
+                self.sampler.sample(data_, temperature, filename)
+
+        plt.close()
+        plt.figure(figsize=(20,18))
+        plt.tight_layout()
+
+        plt.subplot(n_images, 6, 1)
+        filename = os.path.join(dirname, f'model-{now}-validation.png')
+        for i, index in enumerate(self.sampling_images_indices):
+            plt.subplot(n_images, 6, i*6+1)
+            plt.title(f'Validation dataset image {index}')
+            data_ = self.valid_dataset[index]
+            Sampler.plot(data_[0].clone(), filename)
+            #data_ = data.unsqueeze(1).to(self.device)
+            for j, temperature in enumerate(np.linspace(0.01, 0.99, 5)):
+                plt.subplot(n_images, 6, i*6+2+j)
+                plt.title(f'temperature={temperature}')
+                self.sampler.sample(data_, temperature, filename)
+
+                
     def load(self, path):
         checkpoint = torch.load(path)
         self.encoder.load_state_dict(checkpoint['encoder'])
