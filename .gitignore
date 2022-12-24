@@ -1,0 +1,9 @@
+venv/
+*.npz
+.DS_Store
+.idea/
+__pycache__/
+*checkpoints/
+data/
+runs/
+
